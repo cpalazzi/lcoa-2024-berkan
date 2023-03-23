@@ -1,28 +1,42 @@
 import pypsa
 import p_auxiliary as aux
+import glob
+import p_data_store as pds
 import pandas as pd
-import logging
 
 """File to optimise the size of a green ammonia plant given a specified wind and solar profile"""
 
 
-def main(file_name, extension):
-    """Code to execute run at a single location"""
+def generate_network(n_snapshots, data_file):
+    """Generates a network that can be used to run several cases"""
     # ==================================================================================================================
     # Set up network
     # ==================================================================================================================
 
-    # Import the weather data
-    weather_data = aux.get_weather_data(file_name=file_name)
-
     # Import a generic network
-    n = pypsa.Network(override_component_attrs=aux.create_override_components())
+    network = pypsa.Network(override_component_attrs=aux.create_override_components())
 
     # Set the time values for the network
-    n.set_snapshots(range(len(weather_data)))
+    network.set_snapshots(range(n_snapshots))
 
     # Import the design of the H2 plant into the network
-    n.import_from_csv_folder("Basic_ammonia_plant")
+    network.import_from_csv_folder(data_file)
+
+    return network
+
+
+def main(n=None, file_name=None, weather_data=None, multi_site=False, extension=None, aggregation_count=1):
+    """Code to execute run at a single location"""
+    # Import the weather data
+    if file_name is not None and weather_data is None:
+        weather_data = aux.get_weather_data(file_name=file_name, aggregation_count=aggregation_count)
+    elif file_name is not None and weather_data is not None:
+        raise RuntimeWarning('You have entered both a file_name and weather_data; '
+                             'the weather_data is being used, and any data in the file will be ignored.')
+
+    # Import a generic network if needed
+    if n is None:
+        n = generate_network(len(weather_data), "Basic_ammonia_plant")
 
     renewables_lst = n.generators.index.to_list()
     # Note: All flows are in MW or MWh, conversions for hydrogen done using HHVs. Hydrogen HHV = 39.4 MWh/t
@@ -69,16 +83,25 @@ def main(file_name, extension):
     # Output results
     # ==================================================================================================================
 
-    # Scale if needed
-    scale = aux.get_scale(n, file_name=file_name)
+    if not multi_site:
+        # Scale if needed
+        scale = aux.get_scale(n, file_name=file_name)
 
-    # Put the results in a nice format
-    output = aux.get_results_dict_for_excel(n, scale)
+        # Put the results in a nice format
+        output = aux.get_results_dict_for_excel(n, scale, aggregation_count=aggregation_count)
 
-    # Send the results to excel
-    aux.write_results_to_excel(output, file_name=file_name, extension=extension)
+        # Send the results to excel
+        aux.write_results_to_excel(output, file_name=file_name[12:], extension=extension)
+    else:
+        output = aux.get_results_dict_for_multi_site(n, aggregation_count=aggregation_count)
 
+    return output
 
 
 if __name__ == '__main__':
-    main('demo_data', '_output')
+    file_lst = glob.glob('WeatherData/*.csv')
+    length = len(pd.read_csv(file_lst[0]))
+    network_design = generate_network(length, 'Basic_ammonia_plant_2030')
+    store = pds.Data_store()
+    for file in glob.glob('Data/*'):
+        main(n=network_design, file_name=file, multi_site=True, extension='_2030', aggregation_count=8)

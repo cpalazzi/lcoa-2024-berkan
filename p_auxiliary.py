@@ -43,7 +43,7 @@ def get_col_widths(dataframe):
     return [idx_max] + [max([len(str(s)) for s in dataframe[col].values] + [len(col)]) for col in dataframe.columns]
 
 
-def get_weather_data(file_name=None):
+def get_weather_data(file_name=None, aggregation_count=None):
     """Asks the user where the weather data is, and pulls it in. Keeps asking until it gets a file.
     If a file_name has already been provided this code just imports the data. """
     # import data
@@ -70,19 +70,47 @@ def get_weather_data(file_name=None):
         weather_data = pd.read_csv(file_name + '.csv')
         weather_data.drop(weather_data.columns[0], axis=1, inplace=True)
 
-    return weather_data
+        # Just tidy up the data if it needs it...
+        if 'Grid' not in weather_data.columns:
+            weather_data['Grid'] = np.zeros(len(weather_data))
+        if 'RampDummy' not in weather_data.columns:
+            weather_data['RampDummy'] = np.ones(len(weather_data))
+
+    if aggregate is not None:
+        print('Aggregating weather data...')
+        weather_data = aggregate_data(weather_data, aggregation_count)
+        return weather_data
+    else:
+        return weather_data
+
+
+def aggregate_data(data, aggregation_count):
+    """Aggregates self.concat into blocks of fixed numbers of size aggregation_count.
+    aggregation_count must be an integer which is a factor of 24 (i.e. 1, 2, 3, 4, 6, 12, 24)"""
+    if len(data) % aggregation_count != 0:
+        raise TypeError("Aggregation counter must divide evenly into the total number of data points")
+
+    df = pd.Series(range(len(data) // aggregation_count)).to_frame('snapshot').set_index('snapshot')
+
+    for column in data.columns:
+        if np.average(data[column]) > 0:
+            df[column] = [np.average(data[column].to_list()[i * aggregation_count:(i + 1) * aggregation_count])
+                          for i in df.index]
+        else:
+            df[column] = np.zeros(len(df))
+    return df
 
 
 def check_CAPEX(file_name=None):
     """Checks if the user has put the CAPEX into annualised format. If not, it helps them do so.
-    file_name is the wather data file - if it is not specified the user is asked.
-    Otherwise this function does nothing."""
+    file_name is the weather data file - if it is not specified the user is asked.
+    Otherwise, this function does nothing."""
     if file_name is None:
         check = input('Are your capital costs in the generators.csv, '
-                            'components.csv and stores.csv files annualised?'
-                        '\n (i.e. have you converted them from their upfront capital cost'
-                        ' to the cost that accrues each year under the chosen financial conditions? \n'
-                        '(Y/N) >> ')
+                      'components.csv and stores.csv files annualised?'
+                      '\n (i.e. have you converted them from their upfront capital cost'
+                      ' to the cost that accrues each year under the chosen financial conditions? \n'
+                      '(Y/N) >> ')
     else:
         check = 'Y'
     if check != 'Y':
@@ -138,9 +166,9 @@ def get_scale(n, file_name=None):
     if file_name is None:
         print('\nThe unscaled generation capacities are:')
         print(n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[['Rated Capacity (MW)']])
-        print('The unscaled hydrogen production is {a} t/year\n'.format(a=n.loads.p_set.values[0]/39.4*8760))
+        print('The unscaled hydrogen production is {a} t/year\n'.format(a=n.loads.p_set.values[0] / 39.4 * 8760))
         scale = input('Enter a scaling factor for the results, to adjust the production. \n'
-                       "If you don't want to scale the results, enter a value of 1 >> ")
+                      "If you don't want to scale the results, enter a value of 1 >> ")
         try:
             scale = float(scale)
         except ValueError:
@@ -151,7 +179,7 @@ def get_scale(n, file_name=None):
         return 1
 
 
-def get_results_dict_for_excel(n, scale):
+def get_results_dict_for_excel(n, scale, aggregation_count=1):
     """Takes the results and puts them in a dictionary ready to be sent to Excel"""
     # Rename the components:
     links_name_dct = {'p_nom_opt': 'Rated Capacity (MW)',
@@ -162,16 +190,16 @@ def get_results_dict_for_excel(n, scale):
     comps["Rated Capacity (MW)"] *= scale
 
     # Get the energy flows
-    primary = n.links_t.p0*scale
-    secondary = (n.links_t.p2*scale).drop(columns=['HydrogenFromStorage', 'Electrolysis', 'BatteryInterfaceIn',
-                                                   'BatteryInterfaceOut', 'HydrogenFuelCell', 'PenaltyLink'])
+    primary = n.links_t.p0 * scale
+    secondary = (n.links_t.p2 * scale).drop(columns=['HydrogenFromStorage', 'Electrolysis', 'BatteryInterfaceIn',
+                                                     'BatteryInterfaceOut', 'HydrogenFuelCell', 'PenaltyLink'])
 
     # Rescale the energy flows (I know there's hard coding here but these numbers should never change!):
     primary['HydrogenCompression'] /= 39.4
     primary['HydrogenFromStorage'] /= 39.4
     primary['HydrogenFuelCell'] *= n.links.loc['HydrogenFuelCell'].efficiency
     secondary['HB'] /= 39.4
-    primary['Ammonia production (t/h)'] = secondary['HB']*17/3
+    primary['Ammonia production (t/h)'] = secondary['HB'] * 17 / 3
 
     # Rename the energy flows so that the units are comprehensible
     primary.rename(columns={
@@ -195,20 +223,22 @@ def get_results_dict_for_excel(n, scale):
 
     output = {
         'Headlines': pd.DataFrame({
-            'Objective function (USD/t)': [n.objective/(n.loads.p_set.values[0]/6.25*8760)],
-            'Production (t/year)': n.loads.p_set.values[0]/6.25*8760*scale}, index=['LCOA (USD/t)']),
-        'Generators': n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[['Rated Capacity (MW)']]*scale,
+            'Objective function (USD/t)': [n.objective / (n.loads.p_set.values[0] / 6.25 * 8760)],
+            'Production (t/year)': n.loads.p_set.values[0] / 6.25 * 8760 * scale}, index=['LCOA (USD/t)']),
+        'Generators': n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[
+                          ['Rated Capacity (MW)']] * scale,
         'Components': comps,
-        'Stores': n.stores.rename(columns={'e_nom_opt': 'Storage Capacity (MWh)'})[['Storage Capacity (MWh)']]*scale,
-        'Energy generation (MW)': n.generators_t.p*scale,
+        'Stores': scale * aggregation_count * n.stores.rename(columns={
+                                        'e_nom_opt': 'Storage Capacity (MWh)'})[['Storage Capacity (MWh)']],
+        'Energy generation (MW)': n.generators_t.p * scale,
         'Energy consumption': consumption,
-        'Stored energy capacity (MWh)': n.stores_t.e*scale
+        'Stored energy capacity (MWh)': n.stores_t.e * scale * aggregation_count
     }
     return output
 
 
 def write_results_to_excel(output, file_name=None, extension=None):
-    """Takes results dictionary and puts them in an excel file. User determines the file name"""
+    """Takes results dictionary and puts them in an Excel file. User determines the file name"""
     if file_name is None:
         incomplete = True
         while incomplete:
@@ -227,7 +257,7 @@ def write_results_to_excel(output, file_name=None, extension=None):
                 incomplete = True
             print('There is a problem writing on that file. Try another excel file name.')
     else:
-        output_file = file_name + extension + '.xlsx'
+        output_file = r'Results/' + file_name + extension + '.xlsx'
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
             for key in output.keys():
                 dataframe = output[key]
@@ -235,6 +265,19 @@ def write_results_to_excel(output, file_name=None, extension=None):
                 worksheet = writer.sheets[key]
                 for i, width in enumerate(get_col_widths(dataframe)):
                     worksheet.set_column(i, i, width)
+
+
+def get_results_dict_for_multi_site(n, aggregation_count=1):
+    """Just a simpler function that only gets the headline information, and nothing to do with times"""
+    dct = dict()
+    dct['Objective'] = n.objective / (n.loads.p_set.values[0] / 6.25 * 8760 * 1000)
+    for generator in n.generators.index.to_list():
+        dct[generator] = n.generators.loc[generator, 'p_nom_opt']
+    for component in n.links.index.to_list():
+        dct[component] = n.links.loc[component, 'p_nom_opt']
+    for store in n.stores.index.to_list():
+        dct[store] = n.stores.loc[store, 'e_nom_opt'] * aggregation_count
+    return dct
 
 
 def extra_functionalities(n, snapshots):
@@ -247,10 +290,10 @@ def _nh3_ramp_down(model, t):
     if t == 0:
         old_rate = model.link_p['HB', model.t.at(-1)]
     else:
-        old_rate = model.link_p['HB', t-1]
+        old_rate = model.link_p['HB', t - 1]
 
     return old_rate - model.link_p['HB', t] <= \
-           model.link_p_nom['HB'] * model.HB_max_ramp_down
+        model.link_p_nom['HB'] * model.HB_max_ramp_down
     # Note 20 is the UB of the size of the ammonia plant; essentially if x = 0 then the constraint is not active
 
 
@@ -259,10 +302,10 @@ def _nh3_ramp_up(model, t):
     if t == 0:
         old_rate = model.link_p['HB', model.t.at(-1)]
     else:
-        old_rate = model.link_p['HB', t-1]
+        old_rate = model.link_p['HB', t - 1]
 
     return model.link_p['HB', t] - old_rate <= \
-           model.link_p_nom['HB'] * model.HB_max_ramp_up
+        model.link_p_nom['HB'] * model.HB_max_ramp_up
 
 
 def _penalise_ramp_down(model, t):
@@ -270,9 +313,9 @@ def _penalise_ramp_down(model, t):
     if t == 0:
         old_rate = model.link_p['HB', model.t.at(-1)]
     else:
-        old_rate = model.link_p['HB', t-1]
+        old_rate = model.link_p['HB', t - 1]
 
-    return model.link_p['PenaltyLink', t] >= (old_rate-model.link_p['HB', t])
+    return model.link_p['PenaltyLink', t] >= (old_rate - model.link_p['HB', t])
 
 
 def _penalise_ramp_up(model, t):
@@ -280,9 +323,9 @@ def _penalise_ramp_up(model, t):
     if t == 0:
         old_rate = model.link_p['HB', model.t.at(-1)]
     else:
-        old_rate = model.link_p['HB', t-1]
+        old_rate = model.link_p['HB', t - 1]
 
-    return model.link_p['PenaltyLink', t] >= (model.link_p['HB', t]-old_rate)
+    return model.link_p['PenaltyLink', t] >= (model.link_p['HB', t] - old_rate)
 
 
 def pyomo_constraints(network, snapshots):
@@ -312,5 +355,3 @@ def pyomo_constraints(network, snapshots):
     network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
     network.model.NH3_pyomo_penalise_ramp_down = pm.Constraint(network.model.t, rule=_penalise_ramp_down)
     network.model.NH3_pyomo_penalise_ramp_up = pm.Constraint(network.model.t, rule=_penalise_ramp_up)
-
-
