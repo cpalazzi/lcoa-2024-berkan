@@ -67,7 +67,7 @@ def get_weather_data(file_name=None, aggregation_count=None):
                             ' If not, exit the code using ctrl+c and start again.')
 
     else:
-        weather_data = pd.read_csv(file_name + '.csv')
+        weather_data = pd.read_csv(file_name)
         weather_data.drop(weather_data.columns[0], axis=1, inplace=True)
 
         # Just tidy up the data if it needs it...
@@ -76,7 +76,7 @@ def get_weather_data(file_name=None, aggregation_count=None):
         if 'RampDummy' not in weather_data.columns:
             weather_data['RampDummy'] = np.ones(len(weather_data))
 
-    if aggregate is not None:
+    if aggregation_count is not None:
         print('Aggregating weather data...')
         weather_data = aggregate_data(weather_data, aggregation_count)
         return weather_data
@@ -237,7 +237,7 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1):
     return output
 
 
-def write_results_to_excel(output, file_name=None, extension=None):
+def write_results_to_excel(output, file_name="", extension=""):
     """Takes results dictionary and puts them in an Excel file. User determines the file name"""
     if file_name is None:
         incomplete = True
@@ -353,5 +353,34 @@ def pyomo_constraints(network, snapshots):
     logging.warning('Pypsa has been overridden - Ramp rates on NH3 plant are included')
     network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down)
     network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
-    network.model.NH3_pyomo_penalise_ramp_down = pm.Constraint(network.model.t, rule=_penalise_ramp_down)
-    network.model.NH3_pyomo_penalise_ramp_up = pm.Constraint(network.model.t, rule=_penalise_ramp_up)
+    # network.model.NH3_pyomo_penalise_ramp_down = pm.Constraint(network.model.t, rule=_penalise_ramp_down)
+    # network.model.NH3_pyomo_penalise_ramp_up = pm.Constraint(network.model.t, rule=_penalise_ramp_up)
+
+def pyomo_operating_constraints(network, snapshots):
+    """Exactly as per the other constraints, but excludes any constraints which only apply during design"""
+    # The HB Ramp constraints are functions of time, so we need to create some pyomo sets/parameters to represent them.
+    network.model.t = pm.Set(initialize=network.snapshots)
+    network.model.HB_max_ramp_down = pm.Param(initialize=network.links.loc['HB'].ramp_limit_down)
+    network.model.HB_max_ramp_up = pm.Param(initialize=network.links.loc['HB'].ramp_limit_up)
+
+    # Using those sets/parameters, we can now implement the constraints...
+    logging.warning('Pypsa has been overridden - Ramp rates on NH3 plant are included')
+    network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down)
+    network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
+
+def convert_network_to_operating(n, ammonia_cost_per_ton=None):
+    """Takes a designed network built with the designer and fixes the parameters as needs be
+    ammonia_cost_per_ton = the cost at which ammonia will be sold; this gives the model a reason to make ammonia"""
+
+    # Sets the expandable parameters to false:
+    n.links.p_nom_extendable = [False for _ in len(n.links)]
+    n.stores.e_nom_extendable = [False for _ in len(n.stores)]
+    n.generators.p_nom_extendable = [False for _ in len(n.generators)]
+
+    # Sets the basic equipment size to its optimum size from the last run...
+    n.links.p_nom = n.links.p_nom_opt
+    n.stores.e_nom = n.generators.e_nom_opt
+    n.generators.p_nom = n.generators.p_nom_opt
+
+    # Sets the ammonia storage to be free and expandable - it's just a measure of production
+    n
