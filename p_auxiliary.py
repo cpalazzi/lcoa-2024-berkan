@@ -71,10 +71,10 @@ def get_weather_data(file_name=None, aggregation_count=None):
         weather_data.drop(weather_data.columns[0], axis=1, inplace=True)
 
         # Just tidy up the data if it needs it...
-        if 'Grid' not in weather_data.columns:
-            weather_data['Grid'] = np.zeros(len(weather_data))
-        if 'RampDummy' not in weather_data.columns:
-            weather_data['RampDummy'] = np.ones(len(weather_data))
+        # if 'Grid' not in weather_data.columns and 'Grid in ':
+        #     weather_data['Grid'] = np.zeros(len(weather_data))
+        # if 'RampDummy' not in weather_data.columns:
+        #     weather_data['RampDummy'] = np.ones(len(weather_data))
 
     if aggregation_count is not None:
         print('Aggregating weather data...')
@@ -179,7 +179,7 @@ def get_scale(n, file_name=None):
         return 1
 
 
-def get_results_dict_for_excel(n, scale, aggregation_count=1):
+def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, time_step=1.0):
     """Takes the results and puts them in a dictionary ready to be sent to Excel"""
     # Rename the components:
     links_name_dct = {'p_nom_opt': 'Rated Capacity (MW)',
@@ -192,15 +192,15 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1):
     # Get the energy flows
     primary = n.links_t.p0 * scale
     secondary = (n.links_t.p2 * scale).drop(columns=['HydrogenFromStorage', 'Electrolysis', 'BatteryInterfaceIn',
-                                                     'BatteryInterfaceOut', 'HydrogenFuelCell', 'PenaltyLink'])
+                                                     'BatteryInterfaceOut', 'HydrogenFuelCell'])
 
     # Rescale the energy flows (I know there's hard coding here but these numbers should never change!):
     primary['HydrogenCompression'] /= 39.4
     primary['HydrogenFromStorage'] /= 39.4
     primary['HydrogenFuelCell'] *= n.links.loc['HydrogenFuelCell'].efficiency
     secondary['HB'] /= 39.4
-    primary['Ammonia production (t/h)'] = secondary['HB'] * 17 / 3
-
+    primary['Ammonia production (t/h)'] = secondary['HB'] / 0.18
+    
     # Rename the energy flows so that the units are comprehensible
     primary.rename(columns={
         'Electrolysis': 'Electrolysis (MW)',
@@ -216,10 +216,10 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1):
 
     consumption = pd.merge(primary, secondary, left_index=True, right_index=True)
 
-    # Just move the penalty link column to the end...
-    cols = list(consumption.columns)
-    cols.append(cols.pop(cols.index('PenaltyLink')))
-    consumption = consumption.reindex(columns=cols)
+    # # Just move the penalty link column to the end...
+    # cols = list(consumption.columns)
+    # cols.append(cols.pop(cols.index('PenaltyLink')))
+    # consumption = consumption.reindex(columns=cols)
 
     output = {
         'Headlines': pd.DataFrame({
@@ -228,12 +228,18 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1):
         'Generators': n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[
                           ['Rated Capacity (MW)']] * scale,
         'Components': comps,
-        'Stores': scale * aggregation_count * n.stores.rename(columns={
+        'Stores': scale * aggregation_count * time_step * n.stores.rename(columns={
                                         'e_nom_opt': 'Storage Capacity (MWh)'})[['Storage Capacity (MWh)']],
         'Energy generation (MW)': n.generators_t.p * scale,
         'Energy consumption': consumption,
-        'Stored energy capacity (MWh)': n.stores_t.e * scale * aggregation_count
+        'Stored energy capacity (MWh)': n.stores_t.e * scale * aggregation_count * time_step
     }
+
+    if operating:
+        years = len(n.stores_t.e['Ammonia'])/8760
+        objective = n.stores_t.e['Ammonia'].iloc[-1]/6.25*1E-6/years
+        output['Headlines'] = pd.DataFrame({
+            'Annual Production (t/year)': [objective]}, index=['Production (MMTPA)'])
     return output
 
 
@@ -257,7 +263,7 @@ def write_results_to_excel(output, file_name="", extension=""):
                 incomplete = True
             print('There is a problem writing on that file. Try another excel file name.')
     else:
-        output_file = r'Results/' + file_name + extension + '.xlsx'
+        output_file = r'Results/' + file_name.split('\\')[-1][:-4] + extension + '.xlsx'
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
             for key in output.keys():
                 dataframe = output[key]
@@ -267,16 +273,22 @@ def write_results_to_excel(output, file_name="", extension=""):
                     worksheet.set_column(i, i, width)
 
 
-def get_results_dict_for_multi_site(n, aggregation_count=1):
+def get_results_dict_for_multi_site(n, aggregation_count=1, operating=False, time_step=1.0):
     """Just a simpler function that only gets the headline information, and nothing to do with times"""
     dct = dict()
-    dct['Objective'] = n.objective / (n.loads.p_set.values[0] / 6.25 * 8760 * 1000)
+    if not operating:
+        dct['Objective'] = n.objective / (n.loads.p_set.values[0] / 6.25 * 8760 * 1000)
+    else:
+        years = len(n.stores_t.e['Ammonia'])/8784
+        dct['Objective'] = n.stores_t.e['Ammonia'].iloc[-1]/6.25*1E-6/years
     for generator in n.generators.index.to_list():
         dct[generator] = n.generators.loc[generator, 'p_nom_opt']
     for component in n.links.index.to_list():
         dct[component] = n.links.loc[component, 'p_nom_opt']
     for store in n.stores.index.to_list():
-        dct[store] = n.stores.loc[store, 'e_nom_opt'] * aggregation_count
+        dct[store] = n.stores.loc[store, 'e_nom_opt'] * aggregation_count * time_step
+    dct['Hydrogen Storage (t)'] = n.stores.loc[
+                                          'CompressedH2Store', 'e_nom_opt'] * aggregation_count * time_step / 39.4
     return dct
 
 
@@ -306,6 +318,30 @@ def _nh3_ramp_up(model, t):
 
     return model.link_p['HB', t] - old_rate <= \
         model.link_p_nom['HB'] * model.HB_max_ramp_up
+
+
+def _nh3_ramp_down_operating(model, t):
+    """Places a cap on how quickly the ammonia plant can ramp down"""
+    if t == 0:
+        old_rate = model.link_p['HB', model.t.at(-1)]
+    else:
+        old_rate = model.link_p['HB', t - 1]
+
+    return old_rate - model.link_p['HB', t] <= \
+        model.HB_capacity * model.HB_max_ramp_down
+    # Note 20 is the UB of the size of the ammonia plant; essentially if x = 0 then the constraint is not active
+
+
+def _nh3_ramp_up_operating(model, t):
+    """Places a cap on how quickly the ammonia plant can ramp down"""
+    if t == 0:
+        old_rate = model.link_p['HB', model.t.at(-1)]
+    else:
+        old_rate = model.link_p['HB', t - 1]
+
+    return model.link_p['HB', t] - old_rate <= \
+        model.HB_capacity * model.HB_max_ramp_up
+
 
 
 def _penalise_ramp_down(model, t):
@@ -344,6 +380,12 @@ def pyomo_constraints(network, snapshots):
                            network.model.link_p_nom['BatteryInterfaceOut'] /
                            network.links.efficiency["BatteryInterfaceOut"])
 
+    # Constrain the maximum discharge of the H2 storage relative to its size
+    time_step_cycle = 4/8760*0.5*0.5  # Factor 0.5 for half-hourly time step, 0.5 for oversized storage
+    network.model.cycling_limit = pm.Constraint(
+        rule=lambda model: network.model.link_p_nom['BatteryInterfaceOut'] ==
+                           network.model.store_e_nom['CompressedH2Store'] * time_step_cycle)
+
     # The HB Ramp constraints are functions of time, so we need to create some pyomo sets/parameters to represent them.
     network.model.t = pm.Set(initialize=network.snapshots)
     network.model.HB_max_ramp_down = pm.Param(initialize=network.links.loc['HB'].ramp_limit_down)
@@ -362,25 +404,56 @@ def pyomo_operating_constraints(network, snapshots):
     network.model.t = pm.Set(initialize=network.snapshots)
     network.model.HB_max_ramp_down = pm.Param(initialize=network.links.loc['HB'].ramp_limit_down)
     network.model.HB_max_ramp_up = pm.Param(initialize=network.links.loc['HB'].ramp_limit_up)
+    network.model.HB_capacity = pm.Param(initialize=network.links.loc['HB'].p_nom_opt)
 
     # Using those sets/parameters, we can now implement the constraints...
     logging.warning('Pypsa has been overridden - Ramp rates on NH3 plant are included')
-    network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down)
-    network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
+    network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down_operating)
+    network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up_operating)
 
-def convert_network_to_operating(n, ammonia_cost_per_ton=None):
+
+def convert_network_to_operating(n, ammonia_cost_per_ton=500, aggregation_count=1, file_name="", multi_site=False,
+                                 time_step=1.0):
     """Takes a designed network built with the designer and fixes the parameters as needs be
     ammonia_cost_per_ton = the cost at which ammonia will be sold; this gives the model a reason to make ammonia"""
 
     # Sets the expandable parameters to false:
-    n.links.p_nom_extendable = [False for _ in len(n.links)]
-    n.stores.e_nom_extendable = [False for _ in len(n.stores)]
-    n.generators.p_nom_extendable = [False for _ in len(n.generators)]
+    n.links.p_nom_extendable = [False for _ in range(len(n.links))]
+    n.stores.e_nom_extendable = [False for _ in range(len(n.stores))]
+    n.generators.p_nom_extendable = [False for _ in range(len(n.generators))]
 
     # Sets the basic equipment size to its optimum size from the last run...
     n.links.p_nom = n.links.p_nom_opt
-    n.stores.e_nom = n.generators.e_nom_opt
+    n.stores.e_nom = n.stores.e_nom_opt
     n.generators.p_nom = n.generators.p_nom_opt
 
-    # Sets the ammonia storage to be free and expandable - it's just a measure of production
-    n
+    # Sets the ammonia storage to be very cheap and expandable - it's just a measure of production
+    n.stores.loc['Ammonia', 'capital_cost'] = 0.001
+    n.stores.loc['Ammonia', 'e_nom_extendable'] = True
+    n.stores.loc['Ammonia', 'e_nom_max'] = 1E9
+    n.stores.loc['Ammonia', 'e_cyclic'] = False
+    n.stores.loc['Ammonia', 'e_initial'] = 0
+
+
+    # Sets the marginal cost of ammonia production to be negative so the system makes a profit...
+    n.links.loc['HB', 'marginal_cost'] = -ammonia_cost_per_ton/6.25*time_step*aggregation_count/10  # 10 is no. of years in dataset
+
+    # Turns the ammonia load off:
+    n.loads.loc['Ammonia', 'p_set'] = 0
+
+    # Adjust the maximum allowable operating rate of the ammonia plant...
+    n.links_t.p_max_pu = aggregate_data(
+        pd.read_csv('HB_p_max_pu.csv').set_index('snapshot').rename(columns={'HB_Max': 'HB'}), aggregation_count)
+
+    # Re-solves model:
+    n.lopf(solver_name='gurobi', pyomo=True, extra_functionality=pyomo_operating_constraints)
+
+    if not multi_site:
+        detailed_results = get_results_dict_for_excel(n, 1, aggregation_count, operating=True, time_step=time_step)
+        write_results_to_excel(detailed_results, file_name=file_name, extension="_operating")
+        results = get_results_dict_for_multi_site(n, aggregation_count, operating=True, time_step=time_step)
+    else:
+        results = get_results_dict_for_multi_site(n, aggregation_count, operating=True, time_step=time_step)
+
+    return results
+

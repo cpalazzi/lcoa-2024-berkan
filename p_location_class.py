@@ -4,6 +4,8 @@ import numpy as np
 import glob
 import xarray as xr
 import os
+import geopandas as gpd
+from shapely.geometry import Point
 
 
 class all_locations:
@@ -61,8 +63,12 @@ class renewable_data:
 
     def to_csv(self):
         """Sends output weather data to a csv file"""
-        output_file_name = '{a}_{b}_renewable_energy data.csv'.format(a=self.latitude, b=self.longitude)
-        self.concat.to_csv(output_file_name)
+        output_file_name = '{a}_{b}.csv'.format(a=self.latitude, b=self.longitude)
+        output = self.concat.drop(columns=['SolarTracking', 'Weights'])
+        output.rename(columns={'Solar': 's', 'Wind': 'w'}, inplace=True)
+        output.index.name = 't'
+        output.index = ['t{a}'.format(a=i) for i in output.index]
+        output.to_csv(output_file_name)
 
     def get_data_from_nc(self, weather_data):
         """Imports the data from the nc files and interprets them into wind and solar profiles"""
@@ -150,6 +156,15 @@ class renewable_data:
 
 
 if __name__ == "__main__":
-    data = all_locations(None)
-    location = renewable_data(data, 3, 36, ['Wind', 'Solar', 'SolarTracking'])
-    location.to_csv()
+    data = all_locations(r'C:\Users\worc5561\OneDrive - Nexus365\Coding\Offshore_Wind_model')
+    world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres')).rename(columns={'name': 'country'})
+    for lat in range(44, 47):
+        for lon in range(31, 37):
+            try:
+                # Only use the countries you're interested in...
+                country = world[world.intersects(Point(lon, lat))].iloc[0].country
+            except IndexError:
+                country = 'None'
+            if country == 'Russia':
+                location = renewable_data(data, lat, lon, ['Wind', 'Solar', 'SolarTracking'])
+                location.to_csv()
