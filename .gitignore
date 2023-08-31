@@ -1,4 +1,9 @@
 /results/*
 /data/*nc
 /__pycache__
+
+# Exclude exploration notebook
 exploration*
+
+# No temporary files
+~$*
