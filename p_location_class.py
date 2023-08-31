@@ -11,11 +11,13 @@ from shapely.geometry import Point
 class all_locations:
     # List of files and relevant information    
     def __init__(self, path):
+        print('all_locations data_dir: '+path)
         if path is None:
             self.path = os.getcwd()
         else:
             self.path = path
-        self.file_list = glob.glob(self.path + r'\PowerData\*.nc')
+        self.file_list = glob.glob(self.path + r'/*.nc')
+        print('all_locations nc files: '+str(self.file_list))
 
         self.Solars = []
         self.Winds = []
@@ -27,8 +29,8 @@ class all_locations:
                 self.Solars.append(xr.open_dataset(file))
             elif 'WindPower' in file:
                 self.Winds.append(xr.open_dataset(file))
-        self.bathymetry = xr.open_dataset(self.path + r'\PowerData\model_bathymetry.nc')
-        self.waccs = pd.read_csv(self.path + r'\Equipment Data\WACCs.csv')
+        self.bathymetry = xr.open_dataset(self.path + r'/model_bathymetry.nc')
+        #self.waccs = pd.read_csv(self.path + r'\Equipment Data\WACCs.csv')
 
     def in_ocean(self, latitude, longitude):
         # Returns true if a location is in the ocean
@@ -72,6 +74,9 @@ class renewable_data:
 
     def get_data_from_nc(self, weather_data):
         """Imports the data from the nc files and interprets them into wind and solar profiles"""
+        print('get_data_from_nc called')
+        print('longitude: '+str(self.longitude))
+
         self.data = {}
         if self.longitude < -60:
             ref = 0
@@ -80,13 +85,22 @@ class renewable_data:
         else:
             ref = 2
 
-        self.data['Solar'] = weather_data.Solars[ref].loc[
-            dict(latitude=self.latitude, longitude=self.longitude)].Solar.values
-        self.data['Wind'] = weather_data.Winds[ref].loc[
-                                dict(latitude=self.latitude, longitude=self.longitude)].Wind.values * self.wake_losses
-        self.data['SolarTracking'] = weather_data.SolarTrackings[ref].loc[
-            dict(latitude=self.latitude, longitude=self.longitude)].Solar.values
+        print('ref: '+str(ref))
+        print('len weather_data.Solars: '+str(len(weather_data.Solars)))
+        self.data['Solar'] = weather_data.Solars[ref].sel(
+            dict(latitude=self.latitude, longitude=self.longitude), method='nearest'
+        ).Solar.values
+
+        self.data['Wind'] = weather_data.Winds[ref].sel(
+            dict(latitude=self.latitude, longitude=self.longitude), method='nearest'
+        ).Wind.values * self.wake_losses
+
+        self.data['SolarTracking'] = weather_data.SolarTrackings[ref].sel(
+            dict(latitude=self.latitude, longitude=self.longitude), method='nearest'
+        ).Solar.values
+
         self.hourly_data = pd.to_datetime(weather_data.Solars[ref].time.values)
+
 
     def get_data_as_list(self):
         """Extracts the data required and stores it in lists by hour"""

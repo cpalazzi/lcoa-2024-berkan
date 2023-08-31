@@ -173,7 +173,7 @@ def run_global(year):
 
     # Now run the code around the world
     for lat in range(-85, 86):
-        for lon in range(-180, 180):
+        for lon in range(-180, -150):
             # Only use the countries you're interested in...
             intersections = world[world.intersects(Point(lon, lat))]
             if not intersections.empty:
@@ -194,7 +194,7 @@ def run_global(year):
         #     df.to_csv('{a}_lat_{b}.csv'.format(a=year, b=lat))
     # Output all the data at the end
     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-    df.to_csv('{a}_lcoa_global.csv'.format(a=year))
+    df.to_csv('{a}_lcoa_global_-180to-150long.csv'.format(a=year))
 
 
 if __name__ == '__main__':

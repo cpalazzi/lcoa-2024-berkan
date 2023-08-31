@@ -7,6 +7,9 @@ import p_location_class as plc
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import multiprocessing
+import tqdm
+from tqdm.contrib.concurrent import process_map
 
 """File to optimise the size of a green ammonia plant given a specified wind and solar profile"""
 
@@ -133,7 +136,28 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
 
     return output
 
-def run_global(year):
+# Run the code around the world
+
+# Modify the process_location function to accept the 'world' argument, 'data', and 'renewables'
+def process_location(lat, lon, world, data, renewables, n):
+    # 1. Determine the country for a given latitude and longitude
+    intersections = world[world.intersects(Point(lon, lat))]
+    if not intersections.empty:
+        country = intersections.iloc[0].country
+    else:
+        country = 'None'
+
+    # 2. Get weather data for that location
+    location = plc.renewable_data(data, lat, lon, renewables)
+
+    # 3. Run the optimization code
+    result = main(n=n, weather_data=location.concat.drop(columns='Weights'), multi_site=True)
+
+    # 4. Return the results along with lat, lon, and country
+    return lat, lon, country, result
+
+
+def run_global(year, data):
     # Download any necessary data
     data_dir = os.path.join(os.getcwd(),'data')
     excel_file = os.path.join(data_dir,'GeneralSteelData.xlsx')
@@ -143,12 +167,11 @@ def run_global(year):
 
     # Create a network; override the defaults with the relevant cost and efficiency data
     n = generate_network(8760/time_step, 'Basic_ammonia_plant',
-                         costs=costs,
-                         efficiencies=efficiencies,
-                         aggregation_count=time_step)
+                        costs=costs,
+                        efficiencies=efficiencies,
+                        aggregation_count=time_step)
 
     # Get a list of the renewables
-    #renewables = n.generators.index.to_list()
     renewables = n.generators.index.to_list()
     print('renewables: '+str(renewables))
 
@@ -165,41 +188,33 @@ def run_global(year):
     # List hte countries you're interested in
     country_lst = world.country
     # country_lst = ['Russia']
-    #country_lst = pd.read_csv(r'C:\Users\worc5561\OneDrive - Nexus365\Coding\Offshore_Wind_model\Country_lst.csv')
-    #country_lst = country_lst.Country.to_list()
-    #parent_directory = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
-    #csv_file = parent_directory + r'\LCOH_Optimisation\Data\Extra_locs_2.csv'
-    #loc_lst = pd.read_csv(csv_file).set_index('ID')
 
-    # Now run the code around the world
-    for lat in range(-85, 86):
-        for lon in range(-180, 180):
-            # Only use the countries you're interested in...
-            intersections = world[world.intersects(Point(lon, lat))]
-            if not intersections.empty:
-                country = intersections.iloc[0].country
-            else:
-                country = 'None'
-                # Get the weather data in the target location
-                location = plc.renewable_data(data, lat, lon, renewables)
+    # Parallelize the loop
+    num_processes = 16  # Number of parallel processes (adjust according to your server)
+    pool = multiprocessing.Pool(processes=num_processes)
 
-                # Run the code
-                result = main(n=n, weather_data=location.concat.drop(columns='Weights'),
-                              multi_site=True)
-                # Add the output to the data store.
-                store.add_location(lat, lon, country, result)
-        # # Output the data periodically just in case there's a power outage or similar...
-        # if lat % 20 == 0:
-        #     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-        #     df.to_csv('{a}_lat_{b}.csv'.format(a=year, b=lat))
+    latitudes = list(range(-85, 86))
+    longitudes = list(range(-180, 180))
+
+    results = pool.starmap(process_location, 
+                [(lat, lon, world, data, renewables, n) 
+                for lat in latitudes for lon in longitudes])
+
+    # Add the output to the data store
+    for lat, lon, country, result in results:
+        store.add_location(lat, lon, country, result)
+
     # Output all the data at the end
     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
     df.to_csv('{a}_lcoa_global.csv'.format(a=year))
 
-
 if __name__ == '__main__':
-    run_global(2050)
-    # for year in [2030, 2040, 2050]:
-    #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
-        # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:
-        #     run_QLD_sites(year, case)
+    data_dir = os.path.join(os.getcwd(),'data')
+    data = plc.all_locations(data_dir)
+    run_global(2050, data)
+
+
+
+
+
+
