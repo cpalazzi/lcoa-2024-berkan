@@ -133,7 +133,7 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
 
     return output
 
-def run_global(year):
+def run_global(year, file_suff=None):
     # Download any necessary data
     data_dir = os.path.join(os.getcwd(),'data')
     excel_file = os.path.join(data_dir,'GeneralSteelData.xlsx')
@@ -164,6 +164,7 @@ def run_global(year):
 
     # List hte countries you're interested in
     country_lst = world.country
+    print(f'{country_lst=}')
     # country_lst = ['Russia']
     #country_lst = pd.read_csv(r'C:\Users\worc5561\OneDrive - Nexus365\Coding\Offshore_Wind_model\Country_lst.csv')
     #country_lst = country_lst.Country.to_list()
@@ -172,34 +173,37 @@ def run_global(year):
     #loc_lst = pd.read_csv(csv_file).set_index('ID')
 
     # Now run the code around the world
-    for lat in range(-85, 86):
-        for lon in range(-180, 180):
+    # Chile -28_-69_1000000.0
+    for lat in range(-28, -27):
+        for lon in range(-69, -68):
+            print(f'{lat=}')
+            print(f'{lon=}')
             # Only use the countries you're interested in...
             intersections = world[world.intersects(Point(lon, lat))]
             if not intersections.empty:
                 country = intersections.iloc[0].country
+                print(f'{country=}')
             else:
+                print('else')
                 country = 'None'
-                # Get the weather data in the target location
-                location = plc.renewable_data(data, lat, lon, renewables)
+            # Get the weather data in the target location
+            location = plc.renewable_data(data, lat, lon, renewables)
 
-                # Run the code
-                result = main(n=n, weather_data=location.concat.drop(columns='Weights'),
-                              multi_site=True)
-                # Add the output to the data store.
-                store.add_location(lat, lon, country, result)
+            # Run the code
+            result = main(n=n, weather_data=location.concat.drop(columns='Weights'),
+                            multi_site=False)
+            print(result)
+            # Add the output to the data store.
+            store.add_location(lat, lon, country, result)
         # # Output the data periodically just in case there's a power outage or similar...
         # if lat % 20 == 0:
         #     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
         #     df.to_csv('{a}_lat_{b}.csv'.format(a=year, b=lat))
     # Output all the data at the end
     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-    df.to_csv('{a}_lcoa_global.csv'.format(a=year))
+    df['LCOA'] = df['Objective']*1000 
+    df.to_csv('{a}_lcoa_global{b}.csv'.format(a=year, b=file_suff))
 
 
 if __name__ == '__main__':
-    run_global(2050)
-    # for year in [2030, 2040, 2050]:
-    #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
-        # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:
-        #     run_QLD_sites(year, case)
+    run_global(2050, '_test')
