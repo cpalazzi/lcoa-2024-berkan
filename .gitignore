@@ -1,5 +1,6 @@
 /results/*
 /data/*nc
+/data/*hdf
 /__pycache__
 
 # Exclude exploration notebook
