@@ -3,6 +3,7 @@ import numpy as np
 import pyomo.environ as pm
 import logging
 import pandas as pd
+import params
 
 
 def create_override_components():
@@ -198,8 +199,8 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
     primary['HydrogenCompression'] /= 39.4
     primary['HydrogenFromStorage'] /= 39.4
     primary['HydrogenFuelCell'] *= n.links.loc['HydrogenFuelCell'].efficiency
-    secondary['HB'] /= 39.4
-    primary['Ammonia production (t/h)'] = secondary['HB'] / 0.18
+    # hydrogen comment secondary['HB'] /= 39.4
+    # hydrogen comment primary['Ammonia production (t/h)'] = secondary['HB'] / 0.18
     
     # Rename the energy flows so that the units are comprehensible
     primary.rename(columns={
@@ -223,8 +224,8 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
 
     output = {
         'Headlines': pd.DataFrame({
-            'Objective function (USD/t)': [float(n.objective) / (n.loads.p_set.values[0] / 6.25 * 8760)],
-            'Production (t/year)': n.loads.p_set.values[0] / 6.25 * 8760 * scale}, index=['LCOA (USD/t)']),
+            'Objective function (USD/t)': [float(n.objective) / (n.loads.p_set.values[0] * params.cost_assumptions['objective_to_lcoh'] * 8760)],
+            'Production (t/year)': n.loads.p_set.values[0] * params.cost_assumptions['objective_to_lcoh'] * 8760 * scale}, index=['LCOH (USD/t)']),
         'Generators': n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[
                           ['Rated Capacity (MW)']] * scale,
         'Components': comps,
@@ -390,17 +391,17 @@ def pyomo_constraints(network, snapshots):
         rule=lambda model: network.model.link_p_nom['BatteryInterfaceOut'] ==
                            network.model.store_e_nom['CompressedH2Store'] * time_step_cycle)
 
-    # The HB Ramp constraints are functions of time, so we need to create some pyomo sets/parameters to represent them.
-    network.model.t = pm.Set(initialize=network.snapshots)
-    network.model.HB_max_ramp_down = pm.Param(initialize=network.links.loc['HB'].ramp_limit_down)
-    network.model.HB_max_ramp_up = pm.Param(initialize=network.links.loc['HB'].ramp_limit_up)
+    # # The HB Ramp constraints are functions of time, so we need to create some pyomo sets/parameters to represent them.
+    # network.model.t = pm.Set(initialize=network.snapshots)
+    # network.model.HB_max_ramp_down = pm.Param(initialize=network.links.loc['HB'].ramp_limit_down)
+    # network.model.HB_max_ramp_up = pm.Param(initialize=network.links.loc['HB'].ramp_limit_up)
 
-    # Using those sets/parameters, we can now implement the constraints...
-    logging.warning('Pypsa has been overridden - Ramp rates on NH3 plant are included')
-    network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down)
-    network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
-    # network.model.NH3_pyomo_penalise_ramp_down = pm.Constraint(network.model.t, rule=_penalise_ramp_down)
-    # network.model.NH3_pyomo_penalise_ramp_up = pm.Constraint(network.model.t, rule=_penalise_ramp_up)
+    # # Using those sets/parameters, we can now implement the constraints...
+    # logging.warning('Pypsa has been overridden - Ramp rates on NH3 plant are included')
+    # network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down)
+    # network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
+    # # network.model.NH3_pyomo_penalise_ramp_down = pm.Constraint(network.model.t, rule=_penalise_ramp_down)
+    # # network.model.NH3_pyomo_penalise_ramp_up = pm.Constraint(network.model.t, rule=_penalise_ramp_up)
 
 def pyomo_operating_constraints(network, snapshots):
     """Exactly as per the other constraints, but excludes any constraints which only apply during design"""

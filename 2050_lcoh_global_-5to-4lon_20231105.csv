@@ -1,0 +1,63 @@
+,Latitude,Longitude,Country,Headlines,Generators,Components,Stores,Energy generation (MW),Energy consumption,Stored energy capacity (MWh)
+-65_-5,-65,-5,None,"              Objective function (USD/t)  Production (t/year)
+LCOH (USD/t)                 1933.184224           222.335025","               Rated Capacity (MW)
+Generator                         
+Wind                      0.000000
+Solar                     7.000141
+SolarTracking             0.000000
+Grid                      0.000000
+RampDummy                 0.000000","                     Rated Capacity (MW)   Carrier Primary Energy Source Secondary Energy Source
+Link                                                                                            
+Electrolysis                    2.245739        AC                 Power                        
+HydrogenCompression             0.990867  Hydrogen              Hydrogen                   Power
+HydrogenFromStorage             1.000000  Hydrogen       HydrogenStorage                        
+BatteryInterfaceIn              0.003793        AC                 Power                        
+BatteryInterfaceOut             0.003755        AC          PowerStorage                        
+HydrogenFuelCell                0.000000  Hydrogen              Hydrogen                        
+PenaltyLink               1000000.000000        AC           RampPenalty                        ","                    Storage Capacity (MWh)
+Store                                     
+CompressedH2Store             3.289633e+01
+Battery                       0.000000e+00
+AccumulatedPenalty            1.000000e+07","Generator  Wind     Solar  SolarTracking  Grid  RampDummy
+snapshot                                                 
+0           0.0  0.216101            0.0   0.0        0.0
+1           0.0  0.542742            0.0   0.0        0.0
+2           0.0  0.770307            0.0   0.0        0.0
+3           0.0  1.128020            0.0   0.0        0.0
+4           0.0  1.908181            0.0   0.0        0.0
+...         ...       ...            ...   ...        ...
+542         0.0  2.295282            0.0   0.0        0.0
+543         0.0  1.601095            0.0   0.0        0.0
+544         0.0  0.844996            0.0   0.0        0.0
+545         0.0  0.404489            0.0   0.0        0.0
+546         0.0  0.030122            0.0   0.0        0.0
+
+[547 rows x 5 columns]","Link      Electrolysis (MW)  Hydrogen to storage (t/h)  Hydrogen from storage (t/h)  Battery Charge (MW)  ...  Power from Fuel cell (MW)  PenaltyLink_x  H2 Compression Power Consumption (MW)  PenaltyLink_y
+snapshot                                                                                                  ...                                                                                                
+0                  0.216101                   0.000000                     0.020518                  0.0  ...                        0.0            0.0                               0.000000            0.0
+1                  0.542742                   0.000000                     0.013169                  0.0  ...                        0.0            0.0                               0.000000            0.0
+2                  0.770307                   0.000000                     0.008049                  0.0  ...                        0.0            0.0                               0.000000            0.0
+3                  1.128020                   0.000000                     0.000000                  0.0  ...                        0.0            0.0                               0.000000            0.0
+4                  1.875068                   0.016809                     0.000000                  0.0  ...                        0.0            0.0                               0.033113            0.0
+...                     ...                        ...                          ...                  ...  ...                        ...            ...                                    ...            ...
+542                2.245739                   0.025149                     0.000000                  0.0  ...                        0.0            0.0                               0.049543            0.0
+543                1.581016                   0.010193                     0.000000                  0.0  ...                        0.0            0.0                               0.020079            0.0
+544                0.844996                   0.000000                     0.006368                  0.0  ...                        0.0            0.0                               0.000000            0.0
+545                0.404489                   0.000000                     0.016280                  0.0  ...                        0.0            0.0                               0.000000            0.0
+546                0.030122                   0.000000                     0.024703                  0.0  ...                        0.0            0.0                               0.000000            0.0
+
+[547 rows x 9 columns]","Store     CompressedH2Store  Battery  AccumulatedPenalty
+snapshot                                                
+0                 13.447580      0.0                 0.0
+1                 12.928725      0.0                 0.0
+2                 12.611610      0.0                 0.0
+3                 12.611610      0.0                 0.0
+4                 13.273874      0.0                 0.0
+...                     ...      ...                 ...
+542               15.720036      0.0                 0.0
+543               16.121621      0.0                 0.0
+544               15.870718      0.0                 0.0
+545               15.229301      0.0                 0.0
+546               14.256005      0.0                 0.0
+
+[547 rows x 3 columns]"

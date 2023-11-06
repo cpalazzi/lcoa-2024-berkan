@@ -7,6 +7,7 @@ import p_location_class as plc
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import xlsxwriter
 
 """File to optimise the size of a green ammonia plant given a specified wind and solar profile"""
 
@@ -131,7 +132,8 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
         output = aux.get_results_dict_for_excel(n, scale, aggregation_count=aggregation_count, time_step=time_step)
 
         # Send the results to excel
-        aux.write_results_to_excel(output, file_name=file_name[5:], extension=extension)
+        print('test: sending results to excel')
+        aux.write_results_to_excel(output, file_name=file_name, extension=extension)
 
     if multi_site:
         output = aux.get_results_dict_for_multi_site(n, aggregation_count=aggregation_count, time_step=time_step)
@@ -162,7 +164,7 @@ def run_global(year):
     # Create a place to store the data between runs
     store = pds.Data_store()
 
-    # Get the weather data # cpnote: hopefully this pulls in all of the .nc weather data and converts it to the csv input required
+    # Get the weather data # note: hopefully this pulls in all of the .nc weather data and converts it to the csv input required
     print('data_dir: ', data_dir)
     data = plc.all_locations(data_dir)
 
@@ -195,25 +197,36 @@ def run_global(year):
             print('location: ', location)
             print('path: ', location.path)
 
-                # Run the code
+            # Run the code
             result = main(n=n, weather_data=location.concat.drop(columns='Weights'),
-                            multi_site=True)
+                            multi_site=False, get_complete_output=True, file_name='hydrogen_test')
             print('result: ', result)
 
-            # Add the output to the data store.
-            print('run_global n.objective:', n.objective)
-            store.add_location(lat, lon, country, result)
-        # # Output the data periodically just in case there's a power outage or similar...
-        # if lat % 20 == 0:
-        #     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-        #     df.to_csv('{a}_lat_{b}.csv'.format(a=year, b=lat))
-    # Output all the data at the end
-    df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-    df.to_csv(f'{year}_lcoa_global_{min_lon}to{max_lon}lon_20231105.csv')
+    #         # Add the output to the data store.
+    #         print('run_global n.objective:', n.objective)
+    #         store.add_location(lat, lon, country, result)
+    #     # # Output the data periodically just in case there's a power outage or similar...
+    #     # if lat % 20 == 0:
+    #     #     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
+    #     #     df.to_csv('{a}_lat_{b}.csv'.format(a=year, b=lat))
+    # # Output all the data at the end
+    # df = pd.DataFrame.from_dict(store.collated_results, orient='index')
+    # df.to_csv(f'{year}_lcoh_global_{min_lon}to{max_lon}lon_20231105.csv')
+
+def run_tidal():
+        
+    data_dir = os.path.join(os.getcwd(),'data')
+    tidal_file = os.path.join(data_dir,'power_best.csv')
+    weather_data=pd.read_csv(tidal_file)
+    main(n=None, weather_data=weather_data,
+                            multi_site=False, get_complete_output=True, file_name='tidal_test')
+
+
+
 
 
 if __name__ == '__main__':
-    run_global(2050)
+    run_tidal()
     # for year in [2030, 2040, 2050]:
     #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
         # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:
