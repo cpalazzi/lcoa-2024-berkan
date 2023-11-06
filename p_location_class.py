@@ -29,7 +29,7 @@ class all_locations:
                 self.Solars.append(xr.open_dataset(file))
             elif 'WindPower' in file:
                 self.Winds.append(xr.open_dataset(file))
-        self.bathymetry = xr.open_dataset(self.path + r'/model_bathymetry.nc')
+        self.bathymetry = xr.open_dataset(os.path.join(self.path,'model_bathymetry.nc'))
         #self.waccs = pd.read_csv(self.path + r'\Equipment Data\WACCs.csv')
 
     def in_ocean(self, latitude, longitude):

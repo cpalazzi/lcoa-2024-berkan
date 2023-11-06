@@ -1,0 +1,21 @@
+name: lcoa-opt-env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pandas
+  - numpy
+  - pyomo
+  - pypsa
+  - gurobi
+  - ca-certificates
+  - certifi
+  - openssl
+  - geopandas
+  - openpyxl
+  - ipykernel
+  - h5netcdf
+  - geopy
+  - plotly
+  - nbformat
+prefix: /Users/carlopalazzi/mambaforge/envs/lcoa-opt-env

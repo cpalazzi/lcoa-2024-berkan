@@ -223,7 +223,7 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
 
     output = {
         'Headlines': pd.DataFrame({
-            'Objective function (USD/t)': [n.objective / (n.loads.p_set.values[0] / 6.25 * 8760)],
+            'Objective function (USD/t)': [float(n.objective) / (n.loads.p_set.values[0] / 6.25 * 8760)],
             'Production (t/year)': n.loads.p_set.values[0] / 6.25 * 8760 * scale}, index=['LCOA (USD/t)']),
         'Generators': n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[
                           ['Rated Capacity (MW)']] * scale,
@@ -234,6 +234,8 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
         'Energy consumption': consumption,
         'Stored energy capacity (MWh)': n.stores_t.e * scale * aggregation_count * time_step
     }
+    print('get_results_dict_for_excel n.objective: ', n.objective)
+
 
     if operating:
         years = len(n.stores_t.e['Ammonia'])/8760
@@ -276,8 +278,10 @@ def write_results_to_excel(output, file_name="", extension=""):
 def get_results_dict_for_multi_site(n, aggregation_count=1, operating=False, time_step=1.0):
     """Just a simpler function that only gets the headline information, and nothing to do with times"""
     dct = dict()
+    print('get_results_dict_for_multi_site n.objective: ', n.objective)
+
     if not operating:
-        dct['Objective'] = n.objective / (n.loads.p_set.values[0] / 6.25 * 8760 * 1000)
+        dct['Objective'] = float(n.objective) / (n.loads.p_set.values[0] / 6.25 * 8760 * 1000)
     else:
         years = len(n.stores_t.e['Ammonia'])/8784
         dct['Objective'] = n.stores_t.e['Ammonia'].iloc[-1]/6.25*1E-6/years

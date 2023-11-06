@@ -1,0 +1,59 @@
+all_locations data_dir: /Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data
+all_locations nc files: ['/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/WindPowers2.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/model_bathymetry.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/SolarTracking2.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/Solar.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/Solar2.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/SolarTracking.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/WindPowers.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/Solar1.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/WindPowers1.nc', '/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/SolarTracking1.nc']
+Traceback (most recent call last):
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/file_manager.py", line 211, in _acquire_with_cache_info
+    file = self._cache[self._key]
+           ~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/lru_cache.py", line 56, in __getitem__
+    value = self._cache[key]
+            ~~~~~~~~~~~^^^^^
+KeyError: [<class 'h5netcdf.core.File'>, ('/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/data/WindPowers2.nc',), 'r', (('decode_vlen_strings', True), ('invalid_netcdf', None)), '48a12299-ada3-4ba7-ae9e-0711a6eeae91']
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/main_mp.py", line 224, in <module>
+    data = plc.all_locations(data_dir)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/Programming/shipping_sprint/lcoa_model/lcoa-opt/p_location_class.py", line 31, in __init__
+    self.Winds.append(xr.open_dataset(file, engine='h5netcdf'))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/api.py", line 570, in open_dataset
+    backend_ds = backend.open_dataset(
+                 ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/h5netcdf_.py", line 416, in open_dataset
+    store = H5NetCDFStore.open(
+            ^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/h5netcdf_.py", line 177, in open
+    return cls(manager, group=group, mode=mode, lock=lock, autoclose=autoclose)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/h5netcdf_.py", line 128, in __init__
+    self._filename = find_root_and_group(self.ds)[0].filename
+                                         ^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/h5netcdf_.py", line 188, in ds
+    return self._acquire()
+           ^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/h5netcdf_.py", line 180, in _acquire
+    with self._manager.acquire_context(needs_lock) as root:
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/file_manager.py", line 199, in acquire_context
+    file, cached = self._acquire_with_cache_info(needs_lock)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/xarray/backends/file_manager.py", line 217, in _acquire_with_cache_info
+    file = self._opener(*self._args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/h5netcdf/core.py", line 1051, in __init__
+    self._h5file = self._h5py.File(
+                   ^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/h5py/_hl/files.py", line 567, in __init__
+    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/carlopalazzi/mambaforge/envs/lcoa-opt-env/lib/python3.11/site-packages/h5py/_hl/files.py", line 231, in make_fid
+    fid = h5f.open(name, flags, fapl=fapl)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 106, in h5py.h5f.open
+OSError: Unable to synchronously open file (file signature not found)

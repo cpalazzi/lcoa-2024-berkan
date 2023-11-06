@@ -7,11 +7,21 @@ import p_location_class as plc
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import sys
 import multiprocessing
 import tqdm
 from tqdm.contrib.concurrent import process_map
+import time
+
 
 """File to optimise the size of a green ammonia plant given a specified wind and solar profile"""
+
+
+# Redirect stdout and stderr to a log file to suppress output.
+# This is required when running multiprocessing with terminal outputs in SLURM
+# log_file = open("output.log", "w")
+# sys.stdout = log_file
+# sys.stderr = log_file
 
 
 def generate_network(n_snapshots, data_file, aggregation_count=1, costs=None, efficiencies=None, time_step=0.5):
@@ -141,6 +151,7 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
 # Modify the process_location function to accept the 'world' argument, 'data', and 'renewables'
 def process_location(lat, lon, world, data, renewables, n):
     # 1. Determine the country for a given latitude and longitude
+    print('Processing location')
     intersections = world[world.intersects(Point(lon, lat))]
     if not intersections.empty:
         country = intersections.iloc[0].country
@@ -152,7 +163,7 @@ def process_location(lat, lon, world, data, renewables, n):
 
     # 3. Run the optimization code
     result = main(n=n, weather_data=location.concat.drop(columns='Weights'), multi_site=True)
-
+    
     # 4. Return the results along with lat, lon, and country
     return lat, lon, country, result
 
@@ -190,28 +201,37 @@ def run_global(year, data):
     # country_lst = ['Russia']
 
     # Parallelize the loop
-    num_processes = 16  # Number of parallel processes (adjust according to your server)
+    num_processes = 4  # Number of parallel processes (adjust according to your server)
     pool = multiprocessing.Pool(processes=num_processes)
 
-    latitudes = list(range(-85, 86))
-    longitudes = list(range(-180, 180))
+    latitudes = list(range(-65, 66))
+    min_lon = -170
+    max_lon = -160
+    longitudes = list(range(min_lon, max_lon))
 
+    print('Beginning starmap')
     results = pool.starmap(process_location, 
                 [(lat, lon, world, data, renewables, n) 
                 for lat in latitudes for lon in longitudes])
 
+    print('Adding output to the datastore')
     # Add the output to the data store
     for lat, lon, country, result in results:
         store.add_location(lat, lon, country, result)
 
     # Output all the data at the end
     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-    df.to_csv('{a}_lcoa_global.csv'.format(a=year))
+    df.to_csv(f'{year}_lcoa_global_20231105_{min_lon}to{max_lon}mp.csv')
 
 if __name__ == '__main__':
     data_dir = os.path.join(os.getcwd(),'data')
     data = plc.all_locations(data_dir)
+    
+    start_time = time.time()  # Measure the start time
     run_global(2050, data)
+    end_time = time.time()  # Measure the end time
+    total_time = end_time - start_time
+    print(f"Total run time: {total_time} seconds")
 
 
 
