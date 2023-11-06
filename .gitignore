@@ -1,6 +1,10 @@
 /results/*
 /data/*nc
+/data/*hdf
 /__pycache__
+/segment_runs
+/to_merge/*csv
+
 
 # Exclude exploration notebook
 exploration*
