@@ -168,7 +168,7 @@ def process_location(lat, lon, world, data, renewables, n):
     return lat, lon, country, result
 
 
-def run_global(year, data):
+def run_global(year, data, min_lon, max_lon):
     # Download any necessary data
     data_dir = os.path.join(os.getcwd(),'data')
     excel_file = os.path.join(data_dir,'GeneralSteelData.xlsx')
@@ -205,8 +205,6 @@ def run_global(year, data):
     pool = multiprocessing.Pool(processes=num_processes)
 
     latitudes = list(range(-65, 66))
-    min_lon = -170
-    max_lon = -160
     longitudes = list(range(min_lon, max_lon))
 
     print('Beginning starmap')
@@ -226,15 +224,22 @@ def run_global(year, data):
 if __name__ == '__main__':
     data_dir = os.path.join(os.getcwd(),'data')
     data = plc.all_locations(data_dir)
-    
+
+
     start_time = time.time()  # Measure the start time
-    run_global(2050, data)
+    run_global(2050, data, -60, -40)
     end_time = time.time()  # Measure the end time
     total_time = end_time - start_time
     print(f"Total run time: {total_time} seconds")
 
+    start_time = time.time()  # Measure the start time
+    run_global(2050, data, -40, -20)
+    end_time = time.time()  # Measure the end time
+    total_time = end_time - start_time
+    print(f"Total run time: {total_time} seconds")
 
-
-
-
-
+    start_time = time.time()  # Measure the start time
+    run_global(2050, data, -20, 0)
+    end_time = time.time()  # Measure the end time
+    total_time = end_time - start_time
+    print(f"Total run time: {total_time} seconds")
