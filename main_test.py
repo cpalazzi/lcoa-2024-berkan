@@ -209,7 +209,7 @@ def run_global(year):
         #     df.to_csv('{a}_lat_{b}.csv'.format(a=year, b=lat))
     # Output all the data at the end
     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-    df.to_csv(f'{year}_lcoa_global_{min_lon}to{max_lon}lon_20231105.csv')
+    df.to_csv(f'{year}_lcoa_global_{min_lon}to{max_lon}lon_20231111.csv')
 
 
 if __name__ == '__main__':
