@@ -11,3 +11,18 @@ exploration*
 
 # No temporary files
 ~$*
+
+./to_merge/2050_lcoa_global.csv
+./results/2050_lcoa_global.csv
+./results/2050_4.5_lcoa_global_max_capacity.csv
+./2050_lcoa_global.csv
+./data/WindPowers2.nc
+./data/SolarTracking2.nc
+./data/Solar.nc
+./data/Solar2.nc
+./data/MCD12C1.A2022001.061.2023244164746.hdf
+./data/SolarTracking.nc
+./data/WindPowers.nc
+./data/Solar1.nc
+./data/WindPowers1.nc
+./data/SolarTracking1.nc
