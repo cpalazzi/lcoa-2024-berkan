@@ -80,7 +80,10 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
     for name, dataframe in weather_data.items():
         print('Sending weather data to the model')
         print(name, dataframe)
+        print('Generators:')
+        print(n.generators)
         if name in renewables_lst:
+            print(name+' is in renewables')
             n.generators_t.p_max_pu[name] = dataframe
             count += 1
         else:
@@ -90,6 +93,9 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
                              "Edit generators.csv to include all of the renewables for which you've "
                              " provided data".format(a=name))
     if count != len(renewables_lst):
+        print('renewables_lst')
+        print(renewables_lst)
+        print('count: ', count)
         raise ValueError("You have renewables for which you haven't provided a weather dataset. "
                          "\n Edit the input file to include all relevant renewables sources, "
                          "or remove the renewables sources from generators.csv")
@@ -143,7 +149,7 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
 def run_global(year):
     # Download any necessary data
     data_dir = os.path.join(os.getcwd(),'data')
-    excel_file = os.path.join(data_dir,'GeneralSteelData.xlsx')
+    excel_file = os.path.join(data_dir,'GeneralInputData.xlsx')
     time_step = 4
     costs = pd.read_excel(excel_file, sheet_name='Costs').set_index('Equipment')[year]
     print('costs: ', costs)
@@ -213,12 +219,26 @@ def run_global(year):
     # df = pd.DataFrame.from_dict(store.collated_results, orient='index')
     # df.to_csv(f'{year}_lcoh_global_{min_lon}to{max_lon}lon_20231105.csv')
 
-def run_tidal():
-        
+def run_tidal(year):
+    
     data_dir = os.path.join(os.getcwd(),'data')
     tidal_file = os.path.join(data_dir,'power_best.csv')
     weather_data=pd.read_csv(tidal_file)
-    main(n=None, weather_data=weather_data,
+    excel_file = os.path.join(data_dir,'GeneralInputCosts.xlsx')
+    time_step = 4
+    costs = pd.read_excel(excel_file, sheet_name='Costs').set_index('Equipment')[year]
+    print('costs: ', costs)
+    efficiencies = pd.read_excel(excel_file, sheet_name='Efficiencies').set_index('Equipment')[year]
+    print('efficiencies: ', efficiencies)
+
+    # Create a network; override the defaults with the relevant cost and efficiency data
+    n = generate_network(8760/time_step, 'Basic_ammonia_plant',
+                         costs=costs,
+                         efficiencies=efficiencies,
+                         aggregation_count=time_step)
+    print('network n:', n)
+    
+    main(n=n, weather_data=weather_data,
                             multi_site=False, get_complete_output=True, file_name='tidal_test')
 
 
@@ -226,7 +246,7 @@ def run_tidal():
 
 
 if __name__ == '__main__':
-    run_tidal()
+    run_tidal(2050)
     # for year in [2030, 2040, 2050]:
     #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
         # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:
