@@ -82,13 +82,18 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
         if name in renewables_lst:
             n.generators_t.p_max_pu[name] = dataframe
             count += 1
+            print('renewables_lst: ', renewables_lst)
+            print('count: ', count)
         else:
             print(name)
             raise ValueError("You have a columns {a} that isn't in your list of renewables, so I don't know what those "
                              " renewables cost. \n "
                              "Edit generators.csv to include all of the renewables for which you've "
                              " provided data".format(a=name))
+
     if count != len(renewables_lst):
+        print('renewables_lst: ', renewables_lst)
+        print('count: ', count)
         raise ValueError("You have renewables for which you haven't provided a weather dataset. "
                          "\n Edit the input file to include all relevant renewables sources, "
                          "or remove the renewables sources from generators.csv")

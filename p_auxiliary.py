@@ -71,10 +71,10 @@ def get_weather_data(file_name=None, aggregation_count=None):
         weather_data.drop(weather_data.columns[0], axis=1, inplace=True)
 
         # Just tidy up the data if it needs it...
-        # if 'Grid' not in weather_data.columns and 'Grid in ':
-        #     weather_data['Grid'] = np.zeros(len(weather_data))
-        # if 'RampDummy' not in weather_data.columns:
-        #     weather_data['RampDummy'] = np.ones(len(weather_data))
+        if 'Grid' not in weather_data.columns:
+            weather_data['Grid'] = np.zeros(len(weather_data))
+        if 'RampDummy' not in weather_data.columns:
+            weather_data['RampDummy'] = np.ones(len(weather_data))
 
     if aggregation_count is not None:
         print('Aggregating weather data...')
