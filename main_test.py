@@ -7,6 +7,7 @@ import p_location_class as plc
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import glpk
 
 """File to optimise the size of a green ammonia plant given a specified wind and solar profile"""
 
@@ -116,7 +117,7 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
     if not multi_site:
         solver, _ = aux.get_solving_info(file_name=file_name)
     else:
-        solver = 'gurobi'
+        solver = 'glpk'
 
     # Implement their answer
     n.lopf(solver_name=solver, pyomo=True, extra_functionality=aux.pyomo_constraints)
