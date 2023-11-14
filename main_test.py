@@ -7,7 +7,6 @@ import p_location_class as plc
 import geopandas as gpd
 from shapely.geometry import Point
 import os
-import glpk
 
 """File to optimise the size of a green ammonia plant given a specified wind and solar profile"""
 
@@ -215,7 +214,7 @@ def run_global(year):
         #     df.to_csv('{a}_lat_{b}.csv'.format(a=year, b=lat))
     # Output all the data at the end
     df = pd.DataFrame.from_dict(store.collated_results, orient='index')
-    df.to_csv(f'{year}_lcoa_global_{min_lon}to{max_lon}lon_20231111.csv')
+    df.to_csv(f'{year}_lcoa_global_{min_lon}to{max_lon}lon_20231114.csv')
 
 
 if __name__ == '__main__':

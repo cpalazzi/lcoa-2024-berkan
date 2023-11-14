@@ -1,0 +1,2 @@
+,Latitude,Longitude,Country,Objective,Wind,Solar,SolarTracking,Grid,RampDummy,Electrolysis,HydrogenCompression,HydrogenFromStorage,HB,BatteryInterfaceIn,BatteryInterfaceOut,HydrogenFuelCell,PenaltyLink,Ammonia,CompressedH2Store,Battery,AccumulatedPenalty,Hydrogen Storage (t)
+-65_-5,-65,-5,None,0.3498917391366827,0.0,5552.16376709902,0.0,0.0,0.0,2084.3419006146,653.805973079152,969.225402874073,168.356119527837,0.753761284712773,0.746223671865645,92.1605202168892,0.0,22448.9211309474,6536.91936554305,3.73111835932823,0.0,165.91165902393527
