@@ -5,6 +5,14 @@ import logging
 import pandas as pd
 import params
 
+# Set product - to do: implement from main
+#if product == 'NH3':
+#    obj_con = params.cost_assumptions['objective_to_lcoa']
+#elif product == 'H2':
+obj_con = params.cost_assumptions['objective_to_lcoh']
+#else:
+#    raise ValueError("Product must be 'NH3' or 'H2'")
+
 
 def create_override_components():
     """Set up new component attributes as required"""
@@ -71,11 +79,14 @@ def get_weather_data(file_name=None, aggregation_count=None):
         weather_data = pd.read_csv(file_name)
         weather_data.drop(weather_data.columns[0], axis=1, inplace=True)
 
-        # Just tidy up the data if it needs it...
-        # if 'Grid' not in weather_data.columns and 'Grid in ':
+        # # Just tidy up the data if it needs it...
+        # if 'Grid' not in weather_data.columns:
         #     weather_data['Grid'] = np.zeros(len(weather_data))
         # if 'RampDummy' not in weather_data.columns:
         #     weather_data['RampDummy'] = np.ones(len(weather_data))
+        
+        print('in get_weather_data')
+        print('weather_data.columns: ', weather_data.columns())
 
     if aggregation_count is not None:
         print('Aggregating weather data...')
@@ -224,8 +235,8 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
 
     output = {
         'Headlines': pd.DataFrame({
-            'Objective function (USD/t)': [float(n.objective) / (n.loads.p_set.values[0] * params.cost_assumptions['objective_to_lcoh'] * 8760)],
-            'Production (t/year)': n.loads.p_set.values[0] * params.cost_assumptions['objective_to_lcoh'] * 8760 * scale}, index=['LCOH (USD/t)']),
+            'Objective function (USD/t)': [float(n.objective) / (n.loads.p_set.values[0] * obj_con * 8760)],
+            'Production (t/year)': n.loads.p_set.values[0] * obj_con * 8760 * scale}, index=['LCOF (USD/t)']),
         'Generators': n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[
                           ['Rated Capacity (MW)']] * scale,
         'Components': comps,
@@ -240,7 +251,7 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
 
     if operating:
         years = len(n.stores_t.e['Ammonia'])/8760
-        objective = n.stores_t.e['Ammonia'].iloc[-1]/6.25*1E-6/years
+        objective = n.stores_t.e['Ammonia'].iloc[-1]/obj_con*1E-6/years
         output['Headlines'] = pd.DataFrame({
             'Annual Production (t/year)': [objective]}, index=['Production (MMTPA)'])
     return output
@@ -266,7 +277,7 @@ def write_results_to_excel(output, file_name="", extension=""):
                 incomplete = True
             print('There is a problem writing on that file. Try another excel file name.')
     else:
-        output_file = r'Results/' + file_name.split('\\')[-1][:-4] + extension + '.xlsx'
+        output_file = r'Results/' + file_name + extension + '.xlsx'
         with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
             for key in output.keys():
                 dataframe = output[key]
@@ -282,10 +293,10 @@ def get_results_dict_for_multi_site(n, aggregation_count=1, operating=False, tim
     print('get_results_dict_for_multi_site n.objective: ', n.objective)
 
     if not operating:
-        dct['Objective'] = float(n.objective) / (n.loads.p_set.values[0] / 6.25 * 8760 * 1000)
+        dct['Objective'] = float(n.objective) / (n.loads.p_set.values[0] * obj_con * 8760 * 1000)
     else:
         years = len(n.stores_t.e['Ammonia'])/8784
-        dct['Objective'] = n.stores_t.e['Ammonia'].iloc[-1]/6.25*1E-6/years
+        dct['Objective'] = n.stores_t.e['Ammonia'].iloc[-1]* obj_con *1E-6/years
     for generator in n.generators.index.to_list():
         dct[generator] = n.generators.loc[generator, 'p_nom_opt']
     for component in n.links.index.to_list():
@@ -441,7 +452,7 @@ def convert_network_to_operating(n, ammonia_cost_per_ton=500, aggregation_count=
 
 
     # Sets the marginal cost of ammonia production to be negative so the system makes a profit...
-    n.links.loc['HB', 'marginal_cost'] = -ammonia_cost_per_ton/6.25*time_step*aggregation_count/10  # 10 is no. of years in dataset
+    n.links.loc['HB', 'marginal_cost'] = -ammonia_cost_per_ton/obj_con*time_step*aggregation_count/10  # 10 is no. of years in dataset
 
     # Turns the ammonia load off:
     n.loads.loc['Ammonia', 'p_set'] = 0

@@ -7,7 +7,9 @@ import p_location_class as plc
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import numpy as np
 import xlsxwriter
+import params
 
 """File to optimise the size of a green ammonia plant given a specified wind and solar profile"""
 
@@ -220,10 +222,16 @@ def run_global(year):
     # df.to_csv(f'{year}_lcoh_global_{min_lon}to{max_lon}lon_20231105.csv')
 
 def run_tidal(year):
-    
+
     data_dir = os.path.join(os.getcwd(),'data')
     tidal_file = os.path.join(data_dir,'power_best.csv')
     weather_data=pd.read_csv(tidal_file)
+    # Add Grid and RampDummy if the data needs it
+    if 'Grid' not in weather_data.columns:
+        weather_data['Grid'] = np.zeros(len(weather_data))
+    if 'RampDummy' not in weather_data.columns:
+        weather_data['RampDummy'] = np.ones(len(weather_data))
+
     excel_file = os.path.join(data_dir,'GeneralInputCosts.xlsx')
     time_step = 4
     costs = pd.read_excel(excel_file, sheet_name='Costs').set_index('Equipment')[year]
@@ -239,7 +247,7 @@ def run_tidal(year):
     print('network n:', n)
     
     main(n=n, weather_data=weather_data,
-                            multi_site=False, get_complete_output=True, file_name='tidal_test')
+                            multi_site=False, get_complete_output=True, file_name='20231113_tidal_test')
 
 
 
