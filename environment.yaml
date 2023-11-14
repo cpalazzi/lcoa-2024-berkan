@@ -5,9 +5,10 @@ channels:
 dependencies:
   - pandas
   - numpy
-  - pyomo
-  - pypsa
-  - gurobi
+  - pyomo=6.6.1
+  - pypsa=0.25.1
+  - linopy=0.2.4
+  - glpk
   - ca-certificates
   - certifi
   - openssl
@@ -18,6 +19,3 @@ dependencies:
   - geopy
   - plotly
   - nbformat
-  - xlsxwriter
-  - glpk
-prefix: /Users/carlopalazzi/mambaforge/envs/lcoa-opt-env
