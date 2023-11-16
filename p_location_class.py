@@ -16,7 +16,7 @@ class all_locations:
             self.path = os.getcwd()
         else:
             self.path = path
-        self.file_list = glob.glob(self.path + r'/*.nc')
+        self.file_list = sorted(glob.glob(self.path + r'/*.nc'))
         print('all_locations nc files: '+str(self.file_list))
 
         self.Solars = []
