@@ -227,19 +227,7 @@ if __name__ == '__main__':
 
 
     start_time = time.time()  # Measure the start time
-    run_global(2050, data, 120, 140)
-    end_time = time.time()  # Measure the end time
-    total_time = end_time - start_time
-    print(f"Total run time: {total_time} seconds")
-
-    start_time = time.time()  # Measure the start time
-    run_global(2050, data, 140, 160)
-    end_time = time.time()  # Measure the end time
-    total_time = end_time - start_time
-    print(f"Total run time: {total_time} seconds")
-
-    start_time = time.time()  # Measure the start time
-    run_global(2050, data, 160, 180)
+    run_global(2050, data, -180, 180)
     end_time = time.time()  # Measure the end time
     total_time = end_time - start_time
     print(f"Total run time: {total_time} seconds")
