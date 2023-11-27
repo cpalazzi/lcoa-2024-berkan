@@ -59,7 +59,7 @@ def generate_network(n_snapshots, data_file, aggregation_count=1, costs=None, ef
     return network
 
 
-def main(n=None, file_name=None, weather_data=None, multi_site=False, get_complete_output=False,
+def main(n=None, file_name=None, product='NH3', weather_data=None, multi_site=False, get_complete_output=False,
          extension="", aggregation_count=1, time_step=1.0):
     print('in main')
     """Code to execute run at a single location"""
@@ -137,7 +137,7 @@ def main(n=None, file_name=None, weather_data=None, multi_site=False, get_comple
         scale = aux.get_scale(n, file_name=file_name)
 
         # Put the results in a nice format
-        output = aux.get_results_dict_for_excel(n, scale, aggregation_count=aggregation_count, time_step=time_step)
+        output = aux.get_results_dict_for_excel(n, scale, aggregation_count=aggregation_count, time_step=time_step, product=product)
 
         # Send the results to excel
         print('test: sending results to excel')
@@ -221,8 +221,18 @@ def run_global(year):
     # df = pd.DataFrame.from_dict(store.collated_results, orient='index')
     # df.to_csv(f'{year}_lcoh_global_{min_lon}to{max_lon}lon_20231105.csv')
 
-def run_tidal(year):
+def run_tidal(year, product):
 
+    # Check if the product is valid
+    if product not in ['H2', 'NH3']:
+        raise ValueError("Product must be 'H2' or 'NH3'.")
+
+    if product=='H2':
+        plant='Basic_hydrogen_plant'
+    
+    if product=='NH3':
+        plant='Basic_ammonia_plant'
+    
     data_dir = os.path.join(os.getcwd(),'data')
     tidal_file = os.path.join(data_dir,'power_best.csv')
     weather_data=pd.read_csv(tidal_file)
@@ -232,6 +242,7 @@ def run_tidal(year):
     if 'RampDummy' not in weather_data.columns:
         weather_data['RampDummy'] = np.ones(len(weather_data))
 
+
     excel_file = os.path.join(data_dir,'GeneralInputCosts.xlsx')
     time_step = 4
     costs = pd.read_excel(excel_file, sheet_name='Costs').set_index('Equipment')[year]
@@ -240,21 +251,28 @@ def run_tidal(year):
     print('efficiencies: ', efficiencies)
 
     # Create a network; override the defaults with the relevant cost and efficiency data
-    n = generate_network(8760/time_step, 'Basic_ammonia_plant',
+    n = generate_network(8760/time_step, 
+                         data_file=plant,
                          costs=costs,
                          efficiencies=efficiencies,
                          aggregation_count=time_step)
-    print('network n:', n)
+    print('network:', n)
+    print('product: ', product)
+    print('plant: ', plant)
+    
     
     main(n=n, weather_data=weather_data,
-                            multi_site=False, get_complete_output=True, file_name='20231113_tidal_test')
+                            product=product,
+                            multi_site=False, 
+                            get_complete_output=True, 
+                            file_name='20231127_tidal_test')
 
 
 
 
 
 if __name__ == '__main__':
-    run_tidal(2050)
+    run_tidal(2050, product='H2')
     # for year in [2030, 2040, 2050]:
     #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
         # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:

@@ -5,15 +5,6 @@ import logging
 import pandas as pd
 import params
 
-# Set product - to do: implement from main
-#if product == 'NH3':
-#    obj_con = params.cost_assumptions['objective_to_lcoa']
-#elif product == 'H2':
-obj_con = params.cost_assumptions['objective_to_lcoh']
-#else:
-#    raise ValueError("Product must be 'NH3' or 'H2'")
-
-
 def create_override_components():
     """Set up new component attributes as required"""
     # Modify the capacity of a link so that it can attach to 2 buses.
@@ -191,8 +182,15 @@ def get_scale(n, file_name=None):
         return 1
 
 
-def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, time_step=1.0):
+def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, time_step=1.0, product='NH3'):
     """Takes the results and puts them in a dictionary ready to be sent to Excel"""
+    if product == 'NH3':
+        obj_con = params.cost_assumptions['objective_to_lcoa']
+        lev_cost_title = 'LCOA'
+    elif product == 'H2':
+        obj_con = params.cost_assumptions['objective_to_lcoh']
+        lev_cost_title = 'LCOH'
+
     # Rename the components:
     links_name_dct = {'p_nom_opt': 'Rated Capacity (MW)',
                       'carrier': 'Carrier',
@@ -236,7 +234,7 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
     output = {
         'Headlines': pd.DataFrame({
             'Objective function (USD/t)': [float(n.objective) / (n.loads.p_set.values[0] * obj_con * 8760)],
-            'Production (t/year)': n.loads.p_set.values[0] * obj_con * 8760 * scale}, index=['LCOF (USD/t)']),
+            'Production (t/year)': n.loads.p_set.values[0] * obj_con * 8760 * scale}, index=[lev_cost_title+' (USD/t)']),
         'Generators': n.generators.rename(columns={'p_nom_opt': 'Rated Capacity (MW)'})[
                           ['Rated Capacity (MW)']] * scale,
         'Components': comps,
@@ -287,25 +285,26 @@ def write_results_to_excel(output, file_name="", extension=""):
                     worksheet.set_column(i, i, width)
 
 
-def get_results_dict_for_multi_site(n, aggregation_count=1, operating=False, time_step=1.0):
+def get_results_dict_for_multi_site(n, aggregation_count=1, operating=False, time_step=1.0, product='NH3'):
     """Just a simpler function that only gets the headline information, and nothing to do with times"""
     dct = dict()
     print('get_results_dict_for_multi_site n.objective: ', n.objective)
 
     if not operating:
-        dct['Objective'] = float(n.objective) / (n.loads.p_set.values[0] * obj_con * 8760 * 1000)
-    else:
-        years = len(n.stores_t.e['Ammonia'])/8784
-        dct['Objective'] = n.stores_t.e['Ammonia'].iloc[-1]* obj_con *1E-6/years
-    for generator in n.generators.index.to_list():
-        dct[generator] = n.generators.loc[generator, 'p_nom_opt']
-    for component in n.links.index.to_list():
-        dct[component] = n.links.loc[component, 'p_nom_opt']
-    for store in n.stores.index.to_list():
-        dct[store] = n.stores.loc[store, 'e_nom_opt'] * aggregation_count * time_step
-    dct['Hydrogen Storage (t)'] = n.stores.loc[
-                                          'CompressedH2Store', 'e_nom_opt'] * aggregation_count * time_step / 39.4
-    return dct
+        if product=='NH3':
+            dct['Objective'] = float(n.objective) / (n.loads.p_set.values[0] * obj_con * 8760 * 1000)
+        else:
+            years = len(n.stores_t.e['Ammonia'])/8784
+            dct['Objective'] = n.stores_t.e['Ammonia'].iloc[-1]* obj_con *1E-6/years
+        for generator in n.generators.index.to_list():
+            dct[generator] = n.generators.loc[generator, 'p_nom_opt']
+        for component in n.links.index.to_list():
+            dct[component] = n.links.loc[component, 'p_nom_opt']
+        for store in n.stores.index.to_list():
+            dct[store] = n.stores.loc[store, 'e_nom_opt'] * aggregation_count * time_step
+        dct['Hydrogen Storage (t)'] = n.stores.loc[
+                                            'CompressedH2Store', 'e_nom_opt'] * aggregation_count * time_step / 39.4
+        return dct
 
 
 def extra_functionalities(n, snapshots):

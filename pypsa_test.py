@@ -1,6 +1,19 @@
 import pypsa
 import gurobipy as grb
 import pandas as pd
+import pyomo.environ as pyo
+
+def add_ramping_constraints(net, snapshots):
+    m = net.model
+
+    # Ramping limits (change these values as needed)
+    ramping_up_limit = 20  # MW/hour
+    ramping_down_limit = 20  # MW/hour
+
+    for gen in net.generators.index:
+        if gen in m.Generators.p:
+            m.Ramping_Up_Limit.add(net.generators.loc[gen, "p_max_pu"] - m.Generators.p[gen, 0] <= ramping_up_limit)
+            m.Ramping_Down_Limit.add(m.Generators.p[gen, 0] - net.generators.loc[gen, "p_min_pu"] <= ramping_down_limit)
 
 # Create a PyPSA network
 network = pypsa.Network()
@@ -16,7 +29,7 @@ network.add("Load", "load", bus="bus", p_set=50)
 network.generators.loc["gen", "marginal_cost"] = 10.0  # Set a cost of 10 USD/MWh
 
 # Set the objective to minimize the generation costs
-network.lopf(network.snapshots, solver_name="gurobi")
+network.optimize(solver_name="gurobi", extra_functionality=add_ramping_constraints)
 
 # Get the objective value (total generation costs)
 objective_value = network.objective
