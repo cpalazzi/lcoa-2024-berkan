@@ -245,6 +245,8 @@ def get_results_dict_for_excel(n, scale, aggregation_count=1, operating=False, t
         'Stored energy capacity (MWh)': n.stores_t.e * scale * aggregation_count * time_step
     }
     print('get_results_dict_for_excel n.objective: ', n.objective)
+    print('n.loads.p_set.values ', n.loads.p_set.values)
+    print('n.loads.p_set.values[0] ', n.loads.p_set.values[0])
 
 
     if operating:
@@ -378,8 +380,7 @@ def _penalise_ramp_up(model, t):
 
     return model.link_p['PenaltyLink', t] >= (model.link_p['HB', t] - old_rate)
 
-
-def pyomo_constraints(network, snapshots):
+def h2_pyomo_constraints(network, snapshots):
     """Includes a series of additional constraints which make the ammonia plant work as needed:
     i) Battery sizing
     ii) Ramp hard constraints down (Cannot be violated)
@@ -401,17 +402,39 @@ def pyomo_constraints(network, snapshots):
         rule=lambda model: network.model.link_p_nom['BatteryInterfaceOut'] ==
                            network.model.store_e_nom['CompressedH2Store'] * time_step_cycle)
 
-    # # The HB Ramp constraints are functions of time, so we need to create some pyomo sets/parameters to represent them.
-    # network.model.t = pm.Set(initialize=network.snapshots)
-    # network.model.HB_max_ramp_down = pm.Param(initialize=network.links.loc['HB'].ramp_limit_down)
-    # network.model.HB_max_ramp_up = pm.Param(initialize=network.links.loc['HB'].ramp_limit_up)
+def nh3_pyomo_constraints(network, snapshots):
+    """Includes a series of additional constraints which make the ammonia plant work as needed:
+    i) Battery sizing
+    ii) Ramp hard constraints down (Cannot be violated)
+    iii) Ramp hard constraints up (Cannot be violated)
+    iv) Ramp soft constraints down
+    v) Ramp soft constraints up
+    (iv) and (v) just softly suppress ramping so that the model doesn't 'zig-zag', which looks a bit odd on operation.
+    Makes very little difference on LCOA. """
 
-    # # Using those sets/parameters, we can now implement the constraints...
-    # logging.warning('Pypsa has been overridden - Ramp rates on NH3 plant are included')
-    # network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down)
-    # network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
-    # # network.model.NH3_pyomo_penalise_ramp_down = pm.Constraint(network.model.t, rule=_penalise_ramp_down)
-    # # network.model.NH3_pyomo_penalise_ramp_up = pm.Constraint(network.model.t, rule=_penalise_ramp_up)
+    # The battery constraint is built here - it doesn't need a special function because it doesn't depend on time
+    network.model.battery_interface = pm.Constraint(
+        rule=lambda model: network.model.link_p_nom['BatteryInterfaceIn'] ==
+                           network.model.link_p_nom['BatteryInterfaceOut'] /
+                           network.links.efficiency["BatteryInterfaceOut"])
+
+    # Constrain the maximum discharge of the H2 storage relative to its size
+    time_step_cycle = 4/8760*0.5*0.5  # Factor 0.5 for half-hourly time step, 0.5 for oversized storage
+    network.model.cycling_limit = pm.Constraint(
+        rule=lambda model: network.model.link_p_nom['BatteryInterfaceOut'] ==
+                           network.model.store_e_nom['CompressedH2Store'] * time_step_cycle)
+
+    # The HB Ramp constraints are functions of time, so we need to create some pyomo sets/parameters to represent them.
+    network.model.t = pm.Set(initialize=network.snapshots)
+    network.model.HB_max_ramp_down = pm.Param(initialize=network.links.loc['HB'].ramp_limit_down)
+    network.model.HB_max_ramp_up = pm.Param(initialize=network.links.loc['HB'].ramp_limit_up)
+
+    # Using those sets/parameters, we can now implement the constraints...
+    logging.warning('Pypsa has been overridden - Ramp rates on NH3 plant are included')
+    network.model.NH3_pyomo_overwrite_ramp_down = pm.Constraint(network.model.t, rule=_nh3_ramp_down)
+    network.model.NH3_pyomo_overwrite_ramp_up = pm.Constraint(network.model.t, rule=_nh3_ramp_up)
+    # network.model.NH3_pyomo_penalise_ramp_down = pm.Constraint(network.model.t, rule=_penalise_ramp_down)
+    # network.model.NH3_pyomo_penalise_ramp_up = pm.Constraint(network.model.t, rule=_penalise_ramp_up)
 
 def pyomo_operating_constraints(network, snapshots):
     """Exactly as per the other constraints, but excludes any constraints which only apply during design"""

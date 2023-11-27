@@ -123,7 +123,10 @@ def main(n=None, file_name=None, product='NH3', weather_data=None, multi_site=Fa
         solver = 'gurobi'
 
     # Implement their answer
-    n.lopf(solver_name=solver, pyomo=True, extra_functionality=aux.pyomo_constraints)
+    if product == 'NH3':
+        n.lopf(solver_name=solver, pyomo=True, extra_functionality=aux.nh3_pyomo_constraints)
+    elif product =='H2':
+        n.lopf(solver_name=solver, pyomo=True, extra_functionality=aux.h2_pyomo_constraints)
     print('n.lopf: ', n.lopf)
 
     # ==================================================================================================================
@@ -265,14 +268,14 @@ def run_tidal(year, product):
                             product=product,
                             multi_site=False, 
                             get_complete_output=True, 
-                            file_name='20231127_tidal_test')
+                            file_name=f'20231127_{product}_tidal_test')
 
 
 
 
 
 if __name__ == '__main__':
-    run_tidal(2050, product='H2')
+    run_tidal(2050, product='NH3')
     # for year in [2030, 2040, 2050]:
     #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
         # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:

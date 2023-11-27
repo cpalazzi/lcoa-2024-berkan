@@ -42,3 +42,7 @@ cost_assumptions = {
     'objective_to_lcoa'         : 1/6.25,
     'objective_to_lcoh'         : 1/39.4,
 }
+
+# p_set in loads.py for ammonia is the power required to produce x tonnes of ammonia with HHV=6.25 over 8760 hours
+# e.g. for 10Mt p_set = input power = 6.25*10^7/8760 = 7134.7 MW
+# For hydrogen should just replace the HHV to 39.4: p_set = 39.4*10^7/8760 = 44977.1689497717
