@@ -226,6 +226,7 @@ def run_global(year):
 
 def run_tidal(year, product):
 
+
     # Check if the product is valid
     if product not in ['H2', 'NH3']:
         raise ValueError("Product must be 'H2' or 'NH3'.")
@@ -262,20 +263,21 @@ def run_tidal(year, product):
     print('network:', n)
     print('product: ', product)
     print('plant: ', plant)
+    print('costs: ', costs)
     
     
     main(n=n, weather_data=weather_data,
                             product=product,
                             multi_site=False, 
                             get_complete_output=True, 
-                            file_name=f'20231127_{product}_tidal_test')
+                            file_name=f'20231128_{product}_tidal_test')
 
 
 
 
 
 if __name__ == '__main__':
-    run_tidal(2050, product='NH3')
+    run_tidal(2050, product='H2')
     # for year in [2030, 2040, 2050]:
     #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
         # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:
