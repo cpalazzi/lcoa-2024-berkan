@@ -20,4 +20,3 @@ dependencies:
   - nbformat
   - xlsxwriter
   - glpk
-prefix: /Users/carlopalazzi/mambaforge/envs/lcoa-opt-env
