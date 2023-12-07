@@ -1,5 +1,5 @@
 name,control,generator,carrier
-Power,Slack,Wind,AC
+Power,Slack,Marine,AC
 PowerStorage,Slack,,AC
 Hydrogen,Slack,,Hydrogen
 HydrogenStorage,Slack,,Hydrogen

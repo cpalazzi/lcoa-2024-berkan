@@ -248,18 +248,25 @@ def run_tidal(year, product):
 
 
     excel_file = os.path.join(data_dir,'GeneralInputCosts.xlsx')
-    time_step = 4
+    aggregation = 4
     costs = pd.read_excel(excel_file, sheet_name='Costs').set_index('Equipment')[year]
+    
+    time_step=1/52
+    # As we only want to impact the cost of the output stores with time_step, we 
+    # premultiply the H2 store in the NH3 case so it is in the end unaffected
+    if product=='NH3':
+        costs.CompressedH2Store*=1/time_step
     print('costs: ', costs)
     efficiencies = pd.read_excel(excel_file, sheet_name='Efficiencies').set_index('Equipment')[year]
     print('efficiencies: ', efficiencies)
 
     # Create a network; override the defaults with the relevant cost and efficiency data
-    n = generate_network(8760/time_step, 
+    n = generate_network(n_snapshots=8760/aggregation, 
                          data_file=plant,
                          costs=costs,
                          efficiencies=efficiencies,
-                         aggregation_count=time_step)
+                         aggregation_count=aggregation,
+                         time_step=time_step)
     print('network:', n)
     print('product: ', product)
     print('plant: ', plant)
@@ -270,14 +277,14 @@ def run_tidal(year, product):
                             product=product,
                             multi_site=False, 
                             get_complete_output=True, 
-                            file_name=f'20231128_{product}_tidal_test')
+                            file_name=f'20231206_{product}_tidal_test')
 
 
 
 
 
 if __name__ == '__main__':
-    run_tidal(2050, product='H2')
+    run_tidal(2050, product='NH3')
     # for year in [2030, 2040, 2050]:
     #     for case in ['Ammonia_Fix_H_Salt_Cavern_Cycle_4']:
         # for case in ['Salt Cavern_Cycle_4', 'Salt Cavern_Cycle_12', 'Salt Cavern_Cycle_24']:
