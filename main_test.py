@@ -274,10 +274,10 @@ def run_tidal(year, product):
     
     
     main(n=n, weather_data=weather_data,
-                            product=product,
-                            multi_site=False, 
-                            get_complete_output=True, 
-                            file_name=f'20231206_{product}_tidal_test')
+                        product=product,
+                        multi_site=False, 
+                        get_complete_output=True, 
+                        file_name=f'20231206_{product}_tidal_test')
 
 
 
